@@ -45,7 +45,7 @@ sudo nmcli connection modify ens192 ipv4.dns "8.8.8.8,1.1.1.1"
 ```bash
 sudo nmcli connection modify ens192 ipv4.method manual
 ```
-## Apply
+## ✅Apply
 ```bash
 sudo nmcli connection modify ens192 connection.autoconnect yes
 ```
