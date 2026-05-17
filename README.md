@@ -66,9 +66,9 @@ sudo nmcli con mod ens192 ipv4.addresses 10.0.0.50/24 ipv4.gateway 10.0.0.1 ipv4
 
 ---
 
-## 3️⃣ Change Hostname
+## 🏠Change Hostname
 ```bash
-sudo hostnamectl set-hostname web01.example.com
+sudo hostnamectl set-hostname <new-hostname-here>
 sudo systemctl restart sshd
 ```
 ```bash
@@ -82,7 +82,7 @@ sudo nano /etc/hosts   # or: sudo vi /etc/hosts
 
 ---
 
-## 4️⃣ Verify
+## ✅Verify
 ```bash
 ip -4 addr show ens192
 ```
