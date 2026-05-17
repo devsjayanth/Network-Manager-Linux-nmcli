@@ -1,4 +1,4 @@
-# 🛠️ Static IP & Hostname Setup (RHEL/Fedora)
+# 🛠️ RedHat/Fedora: Static IP & Hostname Setup 
 
 Steps for configuring a persistent static IP and changing the system hostname on RHEL/Fedora-based servers. Uses `nmcli` and `hostnamectl` for reliable changes, with exact commands, expected outputs, and targeted fixes for common edge cases.
 
@@ -119,5 +119,4 @@ sudo hostnamectl set-hostname localhost.localdomain
 ## ✅ Final Notes
 - Run all commands as `root` or with `sudo`.
 - Changes are **persistent** across reboots.
-- Reboot is **optional** but recommended if long-running services (cron, mail, monitoring) cache the old hostname/IP.
-- On cloud VMs (AWS/Azure/GCP), verify provider metadata/console to prevent automatic overrides.
+- Reboot is **optional** but recommended.
