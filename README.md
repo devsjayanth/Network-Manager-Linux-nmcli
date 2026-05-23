@@ -1,122 +1,110 @@
-# 🛠️ RedHat/Fedora: Static IP & Hostname Setup 
+# 🐧Linux Network Manager Quick Guide
 
-Steps for configuring a persistent static IP and changing the system hostname on RHEL/Fedora-based servers. Uses `nmcli` and `hostnamectl` for reliable changes, with exact commands, expected outputs, and targeted fixes for common edge cases.
+## Installation:
 
----
-
-## 🔑 Example Values Used
-| Setting | Value |
-|---------|-------|
-| Connection | `ens192` |
-| IP/Subnet | `10.0.0.50/24` |
-| Gateway | `10.0.0.1` |
-| DNS | `8.8.8.8,1.1.1.1` |
-| Hostname (FQDN) | `<new-hostname-here>.example.com` |
-| Short Hostname | `<new-hostname-here>` |
+### 🐧 Debian / Ubuntu
+**Install & Enable:**
+```bash
+sudo apt update
+sudo apt install -y network-manager
+sudo systemctl disable --now systemd-networkd  # avoid conflicts
+sudo systemctl enable --now NetworkManager
+```
+*(Note: Not installed by default on Debian Server. Service name is `NetworkManager` with capital N.)*
 
 ---
 
-## 1️⃣ Find Your Connection Name
+### 🎩 RHEL / CentOS / Rocky / Alma / Fedora
+**Install & Enable:**
+```bash
+# RHEL 8+/Fedora/Rocky/Alma
+sudo dnf install -y NetworkManager
+
+# RHEL 7 / CentOS 7
+sudo yum install -y NetworkManager
+
+# Usually already installed & running, but ensure it's active:
+sudo systemctl enable --now NetworkManager
+```
+*(Note: Enabled by default on all modern RHEL-family systems.)*
+
+---
+
+### 🔧 Universal `nmcli` Static IP Setup (Works on Both)
+1. **Find your interface & connection name:**
+```bash
+nmcli device status
+nmcli connection show
+```
+*(Note the `DEVICE` name, e.g., `eth0`, `ens192`, and the `NAME` column for existing connections.)*
+
+## Edit the Existing Network settings
+
+### 🔍 Step 1: Find your existing connection name
 ```bash
 nmcli connection show
 ```
-**Expected Output:**
-```text
-NAME      UUID                                  TYPE      DEVICE
-ens192    5fb06bd0-0bb0-7ffb-45f1-d6edd65f3e03  ethernet  ens192
-lo        00000000-0000-0000-0000-000000000000  loopback  lo
-```
-✅ Use the exact `NAME` column value. We'll use `ens192`.
+Look at the `NAME` column. It might be something like `Wired connection 1`, `System eth0`, `ens33`, or `eth0`.  
+*(Note: `nmcli` edits the **connection profile**, not the raw interface. The profile is already linked to your NIC.)*
 
 ---
 
-## 2️⃣ Set Static IP
-> 💡 `modify` commands return **no output** on success. Errors only appear if syntax/values are wrong.
+### 🛠 Step 2: Modify the existing profile
+Replace `"Your-Connection-Name"` with the exact name from Step 1:
+```bash
+nmcli connection modify "Your-Connection-Name" \
+  ipv4.method manual \
+  ipv4.addresses 192.168.1.100/24 \
+  ipv4.gateway 192.168.1.1 \
+  ipv4.dns "8.8.8.8 1.1.1.1" \
+  ipv4.ignore-auto-dns yes \
+  ipv4.may-fail no
+```
+🔸 **What each flag does:**
+- `ipv4.method manual` → Forces static IP (instead of `auto`/DHCP)
+- `ipv4.addresses` → Your static IP + CIDR subnet
+- `ipv4.gateway` → Default route
+- `ipv4.dns` → Space-separated DNS servers
+- `ipv4.ignore-auto-dns yes` → Prevents DHCP from overwriting DNS
+- `ipv4.may-fail no` → Stops NM from falling back to DHCP if link is slow
 
-```bash
-sudo nmcli connection modify ens192 ipv4.addresses 10.0.0.50/24
-```
-```bash
-sudo nmcli connection modify ens192 ipv4.gateway 10.0.0.1
-```
-```bash
-sudo nmcli connection modify ens192 ipv4.dns "8.8.8.8,1.1.1.1"
-```
-```bash
-sudo nmcli connection modify ens192 ipv4.method manual
-```
-## ✅Apply
-```bash
-sudo nmcli connection modify ens192 connection.autoconnect yes
-```
-```bash
-sudo nmcli connection up ens192
-```
-**Expected Output (`up` only):**
-```text
-Connection successfully activated (D-Bus active path: /org/freedesktop/NetworkManager/ActiveConnection/3)
-```
+---
 
-🔹 *Note on `nmcli connection down`:* It's intentionally omitted. `modify` updates the saved profile, and `up` safely reloads it without a manual drop. Adding `down` causes an unnecessary network gap. Use it only if troubleshooting stuck states.
-
-**One-Liner Alternative:**
+### 🔄 Step 3: Apply the changes
 ```bash
-sudo nmcli con mod ens192 ipv4.addresses 10.0.0.50/24 ipv4.gateway 10.0.0.1 ipv4.dns "8.8.8.8,1.1.1.1" ipv4.method manual connection.autoconnect yes && sudo nmcli con up ens192
+nmcli connection up "Your-Connection-Name"
+```
+This reloads the profile and pushes it to the physical interface. No reboot needed.
+
+---
+
+### ✅ Step 4: Verify
+```bash
+nmcli connection show "Your-Connection-Name" | grep -E "ipv4\.(method|address|gateway|dns)"
+ip addr show | grep inet
+ping -c 3 8.8.8.8
 ```
 
 ---
 
-## 🏠Change Hostname
+### 🛑 SSH Warning & Recovery
+If you're editing over SSH, a typo can drop your connection.  
+**Recover to DHCP if needed:**
 ```bash
-sudo hostnamectl set-hostname <new-hostname-here>
-sudo systemctl restart sshd
-```
-```bash
-sudo nano /etc/hosts   # or: sudo vi /etc/hosts
-```
-**Edit the `127.0.0.1` line to:**
-```text
-127.0.0.1  localhost localhost.localdomain web01.example.com web01
-```
-💡 *Save/Exit:* `nano` → `Ctrl+O` → `Enter` → `Ctrl+X` | `vi` → `Esc` → `:wq` → `Enter`
-
----
-
-## ✅Verify
-```bash
-ip -4 addr show ens192
-```
-**Expected:**
-```text
-2: ens192: ... UP ...
-    inet 10.0.0.50/24 brd 10.0.0.255 scope global noprefixroute ens192
-```
-```bash
-hostname -f
-```
-**Expected:**
-```text
-<new-hostname-here>
-```
-```bash
-ping -c 2 8.8.8.8
-```
-**Expected:**
-```text
-2 packets transmitted, 2 received, 0% packet loss
+nmcli connection modify "Your-Connection-Name" ipv4.method auto ipv4.addresses "" ipv4.gateway ""
+nmcli connection up "Your-Connection-Name"
 ```
 
 ---
 
-## 🔁 Revert to DHCP / Default
-```bash
-sudo nmcli con mod ens192 ipv4.method auto && sudo nmcli con up ens192
-sudo hostnamectl set-hostname localhost.localdomain
-# Clean /etc/hosts: remove <new-hostname-here>.example.com & <new-hostname-here> from the 127.0.0.1 line
-```
----
+### 📋 Quick `nmcli` Edit Reference
+| What to change          | Command snippet                                  |
+|-------------------------|--------------------------------------------------|
+| Change only IP          | `ipv4.addresses 10.0.0.50/24`                    |
+| Change only gateway     | `ipv4.gateway 10.0.0.1`                          |
+| Add secondary IP        | `+ipv4.addresses 10.0.0.51/24`                   |
+| Remove all static IPs   | `ipv4.addresses ""`                              |
+| Enable IPv6 SLAAC       | `ipv6.method auto`                               |
+| Disable IPv6            | `ipv6.method disabled`                           |
 
-## ✅ Final Notes
-- Run all commands as `root` or with `sudo`.
-- Changes are **persistent** across reboots.
-- Reboot is **optional** but recommended.
+Run `nmcli connection show "Your-Connection-Name"` to dump every current setting before/after editing.
