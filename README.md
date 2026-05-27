@@ -65,7 +65,7 @@ nmcli connection show
 ```
 * **DEVICE column:** Your physical NIC name (e.g., `ens33`, `eth0`).
 * **CONNECTION column:** 
-  * Shows a name (e.g., `Wired connection 1`) ➔ Profile **exists**. Go to **Phase 4A**.
+  * Shows a name (e.g., `ens33`) ➔ Profile **exists**. Go to **Phase 4A**.
   * Shows `--` ➔ No profile exists. Go to **Phase 4B**.
 
 ---
@@ -76,8 +76,8 @@ Choose **Option A** or **Option B**. *Note the explicit `connection.autoconnect 
 
 ### Option A: Modify an EXISTING Connection Profile
 ```bash
-# Replace "Wired connection 1" with your actual profile NAME
-nmcli connection modify "Wired connection 1" \
+# Replace "ens33" with your actual profile NAME
+nmcli connection modify "ens33" \
   ipv4.method manual \
   ipv4.addresses 10.0.0.140/24 \
   ipv4.gateway 10.0.0.2 \
